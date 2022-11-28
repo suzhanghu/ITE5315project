@@ -17,6 +17,49 @@ app.use(bodyParser.json({ type: 'application/vnd.api+json' })); // parse applica
 mongoose.connect(database.url);
 
 var RESTAURANT = require('./models/restaurant');
+const restaurant = require('./models/restaurant');
+
+app.post('/api/restaurants', function(req, res){
+	var data = {
+		name : req.body.name,
+		address : req.body.address,
+		rate : req.body.rate,
+		description : req.body.description
+
+	}
+	RESTAURANT.create(data, function(err, restaurant) {
+		if (err) throw err;
+	
+		res.send('Successfully! RESTAURANT added - '+restaurant.name);
+		});
+
+});
+
+app.get('/api/restaurants', function(req, res) {
+	let page = req.query.page;
+	let perPage = req.query.perPage;
+	let boroug = req.query.borough; 
+	if (boroug){  
+	RESTAURANT.find({borough:boroug}, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
+	if (err){
+        console.log(err);
+    }
+    else{
+       res.send(docs)
+    }
+})}
+else {
+	RESTAURANT.find(null, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
+		if (err){
+			console.log(err);
+		}
+		else{
+		   res.send(docs)
+		}
+	})}
+}
+	);
+
 app.get('/api/:restaurant_id', function(req, res) {
 	let id = req.params.restaurant_id;
 	RESTAURANT.findById(id, function(err, restaurant) {
