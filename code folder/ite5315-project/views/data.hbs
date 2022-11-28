@@ -1,0 +1,20 @@
+<h1>Loading finsih</h1>
+<table border="1">
+
+{{#each data}}
+<tr>
+<td>{{this._id}}</td>
+<td>{{this.title}}</td>
+<td>{{this.isbn}}</td>
+<td>{{this.pageCount}}</td>
+<td>{{this.publishedDate.data}}</td>
+<td>{{this.thumbnailUrl}}</td>
+<td>{{this.shortDescription}}</td>
+<td>{{this.longDescription}}</td>
+<td>{{this.status}}</td>
+<td>{{this.authors}}</td>
+<td>{{this.categories}}</td>
+
+</tr>
+{{/each}}
+</table>
