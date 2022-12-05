@@ -1,24 +1,123 @@
+require("dotenv").config();
+require("./config/altas").connect();
+var cookieParser = require('cookie-parser')
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 var express  = require('express');
 var path = require('path');
-var mongoose = require('mongoose');
 var app      = express();
-var database = require('./config/altas');
 var bodyParser = require('body-parser');  
 var exphbs = require('express-handlebars');       
 app.use(express.static(path.join(__dirname, 'public')));
 app.engine('.hbs', exphbs.engine({ extname: '.hbs' }));
 app.set('view engine', 'hbs');
-var port     = process.env.PORT || 8000;
 app.use(bodyParser.urlencoded({'extended':'true'}));            // parse application/x-www-form-urlencoded
 app.use(bodyParser.json());                                     // parse application/json
-app.use(bodyParser.json({ type: 'application/vnd.api+json' })); // parse application/vnd.api+json as json
+app.use(bodyParser.json({ type: 'application/vnd.api+json' }));
+app.use(cookieParser()); // parse application/vnd.api+json as json
 
+const User = require("./model/user");
+const auth = require("./middleware/auth");
+var RESTAURANT = require('./model/restaurant');
+app.get('/login', (req, res, next) => {
+	res.send(`<form method="POST" action="/login">
+	<input type="text" name="email" placeholder="email">
+	<input type="text" name="password" placeholder="password">
+	<input type="submit">
+	</form>`);
+	});
+app.get('/login', (req, res, next) => {
+	res.send(`<form method="POST" action="/register">\
+	<input type="text" name="first_name" placeholder="first_name">
+	<input type="text" name="last_name" placeholder="last_name">
+	<input type="text" name="email" placeholder="email">
+	<input type="text" name="password" placeholder="password">
+	<input type="submit">
+	</form>`);
+	});
+app.post("/register", async (req, res) => {
+	try {
+	  // Get user input
+	  let first_name = req.body.first_name;
+	  let last_name = req.body.last_name;
+	  let email = req.body.email;
+	  let password = req.body.password;
 
-mongoose.connect(database.url);
+  
+	  // Validate user input
+	  if (!(email && password && first_name && last_name)) {
+		console.log(email);
+		console.log(req.body.email);
+		res.status(400).send("All input is required");
 
-var RESTAURANT = require('./models/restaurant');
-const restaurant = require('./models/restaurant');
-
+	  }
+  
+	  // check if user already exist
+	  // Validate if user exist in our database
+	  const oldUser = await User.findOne({ email });
+  
+	  if (oldUser) {
+		return res.status(409).send("User Already Exist. Please Login");
+	  }
+  
+	  //Encrypt user password
+	  encryptedPassword = await bcrypt.hash(password, 10);
+  
+	  // Create user in our database
+	  const user = await User.create({
+		first_name,
+		last_name,
+		email: email.toLowerCase(), // sanitize: convert email to lowercase
+		password: encryptedPassword,
+	  });
+  
+	  // Create token
+	  const token = jwt.sign(
+		{ user_id: user._id, email },
+		process.env.TOKEN_KEY,
+		{
+		  expiresIn: "2h",
+		}
+	  );
+	  // save user token
+	  res.cookie('auth',token);
+      res.send('ok');
+	} catch (err) {
+	  console.log(err);
+	}
+  });
+  
+  app.post("/login", async (req, res) => {
+	try {
+	  // Get user input
+	  let email = req.body.email;
+	  let password = req.body.password;
+	  // Validate user input
+	  if (!(email && password)) {
+		res.status(400).send("All input is required");
+	  }
+	  // Validate if user exist in our database
+	  const user = await User.findOne({ email });
+  
+	  if (user && (await bcrypt.compare(password, user.password))) {
+		// Create token
+		const token = jwt.sign(
+		  { user_id: user._id, email },
+		  process.env.TOKEN_KEY,
+		  {
+			expiresIn: "2h",
+		  }
+		);
+  
+		// save user token
+		res.cookie('auth',token);
+		res.send('ok');
+	  }
+	  res.status(400).send("Invalid Credentials");
+	} catch (err) {
+	  console.log(err);
+	}
+  });
 app.post('/api/restaurants', function(req, res){
 	var data = {
 		name : req.body.name,
@@ -60,7 +159,7 @@ else {
 }
 	);
 
-app.get('/api/:restaurant_id', function(req, res) {
+app.get('/api/:restaurant_id', auth,function(req, res) {
 	let id = req.params.restaurant_id;
 	RESTAURANT.findById(id, function(err, restaurant) {
 		if (err)
@@ -104,7 +203,7 @@ app.put('/api/:restaurant_id', function(req, res) {
 	res.send('Successfully! RESTAURANT updated - '+restaurant.name);
 	});
 });
-
-
-app.listen(port);
-console.log("App listening on port : " + port);
+app.get("/welcome", auth, (req, res) => {
+	res.status(200).send("Welcome 🙌 ");
+  });
+module.exports = app;
