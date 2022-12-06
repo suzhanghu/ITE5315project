@@ -4,7 +4,7 @@ EmpSchema = new Schema({
     name : String,
     address : String,
     rate: Number,
-    Description: String,
+    description: String,
 
 });
 module.exports = mongoose.model('restaurant', EmpSchema);

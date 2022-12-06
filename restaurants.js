@@ -21,37 +21,6 @@ const auth = require("./middleware/auth");
 var RESTAURANT = require('./model/restaurant');
 
 //new route for searching restaurant details (STEP 3)
-app.get('/info/search', auth,(req, res, next) => {
-res.render("search", {title : "Search Page"});
-});
-
-app.post("/info/search/result", auth,(req, res) => {
-//display results
-	let page = req.body.pgno;
-	let perPage = req.body.perpg;
-	let boroug = req.body.borough; 
-	console.log(boroug);
-	if (boroug){  
-	RESTAURANT.find({borough:boroug}, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
-	if (err){
-        console.log(err);
-    }
-    else{
-		console.log(docs);
-		res.render("result", {title : "Result Page", objects : docs});
-    }
-}).lean()}
-else {
-	RESTAURANT.find(null, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
-		if (err){
-			console.log(err);
-		}
-		else{
-			console.log(docs);
-		    res.render("result", {title : "Result Page", objects : docs});
-		}
-	}).lean()}
-});
 
 app.get('/login', (req, res, next) => {
 	res.send(`<form method="POST" action="/login">
@@ -69,99 +38,224 @@ app.get('/register', (req, res, next) => {
 	<input type="submit">
 	</form>`);
 	});
+app.post("/register", async (req, res) => {
+		try {
+		  // Get user input
+		  let first_name = req.body.first_name;
+		  let last_name = req.body.last_name;
+		  let email = req.body.email;
+		  let password = req.body.password;
+	
+	  
+		  // Validate user input
+		  if (!(email && password && first_name && last_name)) {
+			console.log(email);
+			console.log(req.body.email);
+			res.status(400).send("All input is required");
+	
+		  }
+	  
+	
+		  const oldUser = await User.findOne({ email });
+	  
+		  if (oldUser) {
+			return res.status(409).send("User Already Exist. Please Login");
+		  }
+	  
+		  //Encrypt user password
+		  encryptedPassword = await bcrypt.hash(password, 10);
+	  
+		  // Create user in our database
+		  const user = await User.create({
+			first_name,
+			last_name,
+			email: email.toLowerCase(), // sanitize: convert email to lowercase
+			password: encryptedPassword,
+		  });
+	  
+		  // Create token
+		  const token = jwt.sign(
+			{ user_id: user._id, email },
+			process.env.TOKEN_KEY,
+			{
+			  expiresIn: "2h",
+			}
+		  );
+		  // save user token
+		  res.cookie('auth',token);
+		  res.redirect('/welcome');
+		} catch (err) {
+		  console.log(err);
+		}
+	  });
+	  
+app.post("/login", async (req, res) => {
+		try {
+		  // Get user input
+		  let email = req.body.email;
+		  let password = req.body.password;
+		  // Validate user input
+		  if (!(email && password)) {
+			res.status(400).send("All input is required");
+		  }
+		  // Validate if user exist in our database
+		  const user = await User.findOne({ email });
+	  
+		  if (user && (await bcrypt.compare(password, user.password))) {
+			// Create token
+			const token = jwt.sign(
+			  { user_id: user._id, email },
+			  process.env.TOKEN_KEY,
+			  {
+				expiresIn: "2h",
+			  }
+			);
+	  
+			// save user token
+			res.cookie('auth',token);
+			res.redirect('/welcome');
+		  }
+		  res.status(400).send("Invalid Credentials");
+		} catch (err) {
+		  console.log(err);
+		}
+	  });
+	  app.get('/welcome', auth,(req, res, next) => {
+		res.send(`
+		<a href="/createnewrestaurant">Createnewrestaurant</a>
+		<br>
+		<a href="/deleteresaurant">Deleteresaurant</a>
+		<br>
+		<a href="/updataresaurant">Updata resaurant</a>
+		<br>
+		<a href="/info/search">info search resaurant</a>
+		<br>
+		<a href="/searchresaurant">Search Resaurant by id</a>
+		`);
+		});
+	app.get('/info/search', auth,(req, res, next) => {
+		res.render("search", {title : "Search Page"});
+		});
+		
+		app.post("/info/search/result", auth,(req, res) => {
+		//display results
+			let page = req.body.pgno;
+			let perPage = req.body.perpg;
+			let boroug = req.body.borough; 
+			console.log(boroug);
+			if (boroug){  
+			RESTAURANT.find({borough:boroug}, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
+			if (err){
+				console.log(err);
+			}
+			else{
+				console.log(docs);
+				res.render("result", {title : "Result Page", objects : docs});
+			}
+		}).lean()}
+		else {
+			RESTAURANT.find(null, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
+				if (err){
+					console.log(err);
+				}
+				else{
+					console.log(docs);
+					res.render("result", {title : "Result Page", objects : docs});
+				}
+			}).lean()}
+		});
 app.get('/createnewrestaurant', auth,(req, res, next) => {
 		res.send(`<form method="POST" action="/api/restaurants">\
 		<input type="text" name="name" placeholder="name">
 		<input type="text" name="address" placeholder="address">
 		<input type="text" name="rate" placeholder="rate">
-		<input type="text" name=" borough" placeholder= "borough">
+		<input type="text" name="  description" placeholder= " description">
 		<input type="submit">
 		</form>`);
 		});
-
-app.post("/register", async (req, res) => {
-	try {
-	  // Get user input
-	  let first_name = req.body.first_name;
-	  let last_name = req.body.last_name;
-	  let email = req.body.email;
-	  let password = req.body.password;
-
-  
-	  // Validate user input
-	  if (!(email && password && first_name && last_name)) {
-		console.log(email);
-		console.log(req.body.email);
-		res.status(400).send("All input is required");
-
-	  }
-  
-	  // check if user already exist
-	  // Validate if user exist in our database
-	  const oldUser = await User.findOne({ email });
-  
-	  if (oldUser) {
-		return res.status(409).send("User Already Exist. Please Login");
-	  }
-  
-	  //Encrypt user password
-	  encryptedPassword = await bcrypt.hash(password, 10);
-  
-	  // Create user in our database
-	  const user = await User.create({
-		first_name,
-		last_name,
-		email: email.toLowerCase(), // sanitize: convert email to lowercase
-		password: encryptedPassword,
-	  });
-  
-	  // Create token
-	  const token = jwt.sign(
-		{ user_id: user._id, email },
-		process.env.TOKEN_KEY,
-		{
-		  expiresIn: "2h",
+app.post('/createnewrestaurant', auth,(req, res)=> createnewrestaurant(req, res));
+		function createnewrestaurant(req, res) {
+			
+			var data = {
+				name : req.body.name,
+				address : req.body.address,
+				rate : req.body.rate,
+				description : req.body.description,
+				boroughs : req.body.boroughs
+			}
+			RESTAURANT.create(data, function(err, restaurant) {
+				if (err) throw err;
+			
+				res.send('Successfully! RESTAURANT added - '+restaurant.name);
+				});
 		}
-	  );
-	  // save user token
-	  res.cookie('auth',token);
-      res.send('ok');
-	} catch (err) {
-	  console.log(err);
+app.get('/searchresaurant', auth,function(req, res) {
+			res.send(`<form method="post" action="/searchresaurant">\
+			<input type="text" name="restaurant_id" placeholder="restaurant_id">
+			 <input type="submit">
+			</form>`);
+			});
+app.post('/searchresaurant', auth,(req, res)=> searchresaurant(req, res));
+			function searchresaurant(req, res) {
+				var param = req.body;
+				let id = param.restaurant_id;
+				RESTAURANT.findById(id, function(err, restaurant) {
+					if (err)
+						res.send(err)
+			 
+					res.json(restaurant);
+				});
+			}
+app.get('/deleteresaurant', auth,function(req, res) {
+	res.send(`<form method="post" action="/deleteresaurant">\
+	<input type="text" name="restaurant_id" placeholder="restaurant_id">
+     <input type="submit">
+	</form>`);
+	});
+app.post('/deleteresaurant', auth,(req, res)=> deleterestaurant(req, res));
+function deleterestaurant(req, res) {
+    var param = req.body;
+    let id = param.restaurant_id;
+    RESTAURANT.remove({
+		_id : id
+	}, function(err) {
+		if (err)
+			res.send(err);
+		else
+			res.send('Successfully! RESTAURANT has been Deleted.');	
+	});
+}
+app.get('/updataresaurant', auth,function(req, res) {
+	res.send(`<form method="post" action="/updataresaurant">\
+	<input type="text" name="restaurant_id" placeholder="restaurant_id">
+	<input type="text" name="name" placeholder="name">
+	<input type="text" name="address" placeholder="address">
+	<input type="text" name="rate" placeholder="rate">
+	<input type="text" name=" description" placeholder= " description">
+     <input type="submit">
+	</form>`);
+	});
+	app.post('/updataresaurant', auth,(req, res)=> updataresaurant(req, res));
+	function updataresaurant(req, res) {
+		
+		console.log(req.body);
+		var param = req.body;
+		let id = param.restaurant_id;
+		var data = {
+			name : req.body.name,
+			address : req.body.address,
+			rate : req.body.rate,
+			description : req.body.description,
+	
+		}
+		RESTAURANT.findByIdAndUpdate(id, data, function(err, restaurant) {
+		if (err) throw err;
+	
+		res.send('Successfully! RESTAURANT updated - '+restaurant.name);
+		});
 	}
-  });
-  
-  app.post("/login", async (req, res) => {
-	try {
-	  // Get user input
-	  let email = req.body.email;
-	  let password = req.body.password;
-	  // Validate user input
-	  if (!(email && password)) {
-		res.status(400).send("All input is required");
-	  }
-	  // Validate if user exist in our database
-	  const user = await User.findOne({ email });
-  
-	  if (user && (await bcrypt.compare(password, user.password))) {
-		// Create token
-		const token = jwt.sign(
-		  { user_id: user._id, email },
-		  process.env.TOKEN_KEY,
-		  {
-			expiresIn: "2h",
-		  }
-		);
-  
-		// save user token
-		res.cookie('auth',token);
-		res.send('ok');
-	  }
-	  res.status(400).send("Invalid Credentials");
-	} catch (err) {
-	  console.log(err);
-	}
-  });
+	
+
 app.post('/api/restaurants', auth, function(req, res){
 	var data = {
 		name : req.body.name,
@@ -178,8 +272,6 @@ app.post('/api/restaurants', auth, function(req, res){
 
 });
 
-
-
 app.get('/api/:restaurant_id', auth,function(req, res) {
 	let id = req.params.restaurant_id;
 	RESTAURANT.findById(id, function(err, restaurant) {
@@ -191,7 +283,7 @@ app.get('/api/:restaurant_id', auth,function(req, res) {
  
 });
 
-app.delete('/api/:restaurant_id', auth, function(req, res) {
+app.delete('/api/:restaurant_id', function(req, res) {
 	console.log(req.params.restaurant_id);
 	let id = req.params.restaurant_id;
 	RESTAURANT.remove({
@@ -204,7 +296,7 @@ app.delete('/api/:restaurant_id', auth, function(req, res) {
 	});
 });
 
-app.put('/api/:restaurant_id', auth, function(req, res) {
+app.put('/api/:restaurant_id', function(req, res) {
 
     console.log(req.body);
 
@@ -218,14 +310,10 @@ app.put('/api/:restaurant_id', auth, function(req, res) {
 
 	}
 
-	// save the user
 	RESTAURANT.findByIdAndUpdate(id, data, function(err, restaurant) {
 	if (err) throw err;
 
 	res.send('Successfully! RESTAURANT updated - '+restaurant.name);
 	});
 });
-app.get("/welcome", auth, (req, res) => {
-	res.status(200).send("Welcome 🙌");
-  });
 module.exports = app;
