@@ -1,0 +1,38 @@
+<div class="box">
+        <h2>
+           Search page
+        </h2>
+        <!-- -->
+        <form action="/info/search/result" method="post" class="pageno">
+            <h5>
+           (Asterisk indicates required field)
+             </h5>
+            <label for="">
+                Page number * :
+            </label>
+            <br>
+            <input type="text" name="pgno" id="">
+            <br>
+            <label for="">
+                Number of results per page * : 
+            </label>
+            <br>
+            <input type="text" name="perpg" id="">
+            <br>
+            <label for="">
+               Borough of Restaurant's location :
+            </label>
+            <br>
+            <select name = "borough" id="">
+                <option value="bronx">Bronx</option>
+                <option value="queens">Queens</option>
+                <option value="StIsland">Staten Island</option>
+                <option value="brooklyn">Brooklyn</option>
+                <option value="manhattan">Manhattan</option>
+            </select>
+            <br>
+            <button class="button" type="submit">
+                Submit
+            </button>
+        </form>
+    </div>

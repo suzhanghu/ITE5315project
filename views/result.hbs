@@ -1,0 +1,19 @@
+<table>
+    <!-- result page table format for the reaturants-->
+    <tr>
+        <th>Name</th>
+        <th>Address</th>
+        <th>Rating</th>
+        <th>Review</th>
+        <th>Borough</th>
+    </tr>
+    {{#each objects}}
+    <tr>
+        <td>{{name}}</td>
+        <td>{{address}}</td>
+        <td>{{rate}}</td>
+        <td>{{description}}</td>
+        <td>{{borough}}</td>
+        </tr>
+    {{/each}}
+</table>

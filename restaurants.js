@@ -5,7 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 var express  = require('express');
 var path = require('path');
-var app      = express();
+var app  = express();
 var bodyParser = require('body-parser');  
 var exphbs = require('express-handlebars');       
 app.use(express.static(path.join(__dirname, 'public')));
@@ -19,6 +19,40 @@ app.use(cookieParser()); // parse application/vnd.api+json as json
 const User = require("./model/user");
 const auth = require("./middleware/auth");
 var RESTAURANT = require('./model/restaurant');
+
+//new route for searching restaurant details (STEP 3)
+app.get('/info/search', auth,(req, res, next) => {
+res.render("search", {title : "Search Page"});
+});
+
+app.post("/info/search/result", auth,(req, res) => {
+//display results
+	let page = req.body.pgno;
+	let perPage = req.body.perpg;
+	let boroug = req.body.borough; 
+	console.log(boroug);
+	if (boroug){  
+	RESTAURANT.find({borough:boroug}, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
+	if (err){
+        console.log(err);
+    }
+    else{
+		console.log(docs);
+		res.render("result", {title : "Result Page", objects : docs});
+    }
+}).lean()}
+else {
+	RESTAURANT.find(null, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
+		if (err){
+			console.log(err);
+		}
+		else{
+			console.log(docs);
+		    res.render("result", {title : "Result Page", objects : docs});
+		}
+	}).lean()}
+});
+
 app.get('/login', (req, res, next) => {
 	res.send(`<form method="POST" action="/login">
 	<input type="text" name="email" placeholder="email">
@@ -26,7 +60,7 @@ app.get('/login', (req, res, next) => {
 	<input type="submit">
 	</form>`);
 	});
-app.get('/login', (req, res, next) => {
+app.get('/register', (req, res, next) => {
 	res.send(`<form method="POST" action="/register">\
 	<input type="text" name="first_name" placeholder="first_name">
 	<input type="text" name="last_name" placeholder="last_name">
@@ -35,6 +69,16 @@ app.get('/login', (req, res, next) => {
 	<input type="submit">
 	</form>`);
 	});
+app.get('/createnewrestaurant', auth,(req, res, next) => {
+		res.send(`<form method="POST" action="/api/restaurants">\
+		<input type="text" name="name" placeholder="name">
+		<input type="text" name="address" placeholder="address">
+		<input type="text" name="rate" placeholder="rate">
+		<input type="text" name=" borough" placeholder= "borough">
+		<input type="submit">
+		</form>`);
+		});
+
 app.post("/register", async (req, res) => {
 	try {
 	  // Get user input
@@ -118,13 +162,13 @@ app.post("/register", async (req, res) => {
 	  console.log(err);
 	}
   });
-app.post('/api/restaurants', function(req, res){
+app.post('/api/restaurants', auth, function(req, res){
 	var data = {
 		name : req.body.name,
 		address : req.body.address,
 		rate : req.body.rate,
-		description : req.body.description
-
+		description : req.body.description,
+		boroughs : req.body.boroughs
 	}
 	RESTAURANT.create(data, function(err, restaurant) {
 		if (err) throw err;
@@ -134,32 +178,9 @@ app.post('/api/restaurants', function(req, res){
 
 });
 
-app.get('/api/restaurants', function(req, res) {
-	let page = req.query.page;
-	let perPage = req.query.perPage;
-	let boroug = req.query.borough; 
-	if (boroug){  
-	RESTAURANT.find({borough:boroug}, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
-	if (err){
-        console.log(err);
-    }
-    else{
-       res.send(docs)
-    }
-})}
-else {
-	RESTAURANT.find(null, null, {limit:perPage, skip:(page-1)*perPage}, function(err, docs){
-		if (err){
-			console.log(err);
-		}
-		else{
-		   res.send(docs)
-		}
-	})}
-}
-	);
 
-app.get('/api/:restaurant_id',auth,function(req, res) {
+
+app.get('/api/:restaurant_id', auth,function(req, res) {
 	let id = req.params.restaurant_id;
 	RESTAURANT.findById(id, function(err, restaurant) {
 		if (err)
@@ -170,7 +191,7 @@ app.get('/api/:restaurant_id',auth,function(req, res) {
  
 });
 
-app.delete('/api/:restaurant_id', function(req, res) {
+app.delete('/api/:restaurant_id', auth, function(req, res) {
 	console.log(req.params.restaurant_id);
 	let id = req.params.restaurant_id;
 	RESTAURANT.remove({
@@ -183,14 +204,17 @@ app.delete('/api/:restaurant_id', function(req, res) {
 	});
 });
 
-app.put('/api/:restaurant_id', function(req, res) {
+app.put('/api/:restaurant_id', auth, function(req, res) {
+
+    console.log(req.body);
 
 	let id = req.params.restaurant_id;
 	var data = {
 		name : req.body.name,
 		address : req.body.address,
 		rate : req.body.rate,
-		description : req.body.description
+		description : req.body.description,
+		borough : req.body.borough
 
 	}
 
@@ -202,6 +226,6 @@ app.put('/api/:restaurant_id', function(req, res) {
 	});
 });
 app.get("/welcome", auth, (req, res) => {
-	res.status(200).send("Welcome 🙌 ");
+	res.status(200).send("Welcome 🙌");
   });
 module.exports = app;
