@@ -159,7 +159,7 @@ else {
 }
 	);
 
-app.get('/api/:restaurant_id', auth,function(req, res) {
+app.get('/api/:restaurant_id',auth,function(req, res) {
 	let id = req.params.restaurant_id;
 	RESTAURANT.findById(id, function(err, restaurant) {
 		if (err)
@@ -184,8 +184,6 @@ app.delete('/api/:restaurant_id', function(req, res) {
 });
 
 app.put('/api/:restaurant_id', function(req, res) {
-	// create mongose method to update an existing record into collection
-    console.log(req.body);
 
 	let id = req.params.restaurant_id;
 	var data = {
